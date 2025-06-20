@@ -32,7 +32,7 @@ const MainMenuScreen = ({ navigation }) => {
 
 
   return (
-    <ImageBackground source={require('../assets/background-main.jpg')} style={styles.background}>
+    <ImageBackground source={require('../assets/images/backgrounds/main-menu-bg.png')} style={styles.background}>
       <View style={styles.container}>
         <Text style={styles.title}>KewanQ</Text>
         <Text style={styles.subtitle}>Ayo Belajar Mengenal Hewan!</Text>
