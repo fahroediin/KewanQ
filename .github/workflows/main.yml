@@ -1,0 +1,95 @@
+# Nama workflow yang akan muncul di tab "Actions" di GitHub
+name: Build KewanQ App
+
+# Kapan workflow ini akan berjalan
+on:
+  # Berjalan setiap kali ada push ke branch dev atau prod
+  push:
+    branches:
+      - dev
+      - prod
+  # Berjalan juga setiap kali ada Pull Request yang ditujukan ke branch dev atau prod
+  pull_request:
+    branches:
+      - dev
+      - prod
+
+# Daftar pekerjaan (jobs) yang akan dieksekusi
+jobs:
+  # Job pertama: Melakukan pengecekan dasar sebelum build
+  check:
+    name: Run Linter and Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18 # Gunakan versi Node.js yang sesuai dengan proyek Anda
+
+      - name: Install dependencies
+        run: npm ci # 'ci' lebih cepat dan konsisten daripada 'install'
+
+      # Tambahkan langkah ini jika Anda punya linter atau test
+      # - name: Run linter
+      #   run: npm run lint
+      # - name: Run tests
+      #   run: npm run test
+
+  # Job kedua: Membuat build DEVELOPMENT
+  build_dev:
+    name: Build Development App (Android)
+    runs-on: ubuntu-latest
+    # Hanya berjalan jika job 'check' berhasil DAN push terjadi di branch 'dev'
+    needs: check
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }} # Menggunakan token rahasia
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build development app
+        run: eas build --platform android --profile development --non-interactive
+
+  # Job ketiga: Membuat build PRODUCTION
+  build_prod:
+    name: Build Production App (Android)
+    runs-on: ubuntu-latest
+    # Hanya berjalan jika job 'check' berhasil DAN push terjadi di branch 'prod'
+    needs: check
+    if: github.ref == 'refs/heads/prod' && github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }} # Menggunakan token rahasia
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production app
+        run: eas build --platform android --profile production --non-interactive
