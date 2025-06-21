@@ -1,48 +1,58 @@
 // File: screens/MainMenuScreen.js
 
-// 1. Impor useGameStore
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, Platform } from 'react-native';
 import CustomButton from '../components/CustomButton.js';
 import { Audio } from 'expo-av';
-import { useGameStore } from '../store/gameStore'; // <-- PENTING: Import ini
+import { useGameStore } from '../store/gameStore';
 
 const MainMenuScreen = ({ navigation }) => {
-  const [sound, setSound] = useState();
-  // 2. Ambil fungsi playBackgroundMusic dari store
+  const [sound, setSound] = useState(); // State lokal untuk suara selamat datang
   const playBackgroundMusic = useGameStore(state => state.playBackgroundMusic);
 
-  // Fungsi untuk memutar suara selamat datang (tetap sama)
+  // Fungsi untuk memutar suara selamat datang
   async function playWelcomeSound() {
+    // Cek platform: Hanya putar otomatis di mobile (bukan web)
+    if (Platform.OS === 'web') {
+      console.log("Autoplay suara selamat datang dilewati di web.");
+      return;
+    }
+
     try {
-      console.log('Memuat Suara Selamat Datang');
+      console.log('Memuat Suara Selamat Datang (Mobile)');
       const { sound: welcomeSound } = await Audio.Sound.createAsync(
          require('../assets/audio/selamat-datang.mp3')
       );
-      setSound(welcomeSound); // Simpan objek suara ke state lokal
+      setSound(welcomeSound);
       
-      console.log('Memutar Suara Selamat Datang');
       await welcomeSound.playAsync(); 
+      console.log('Memutar Suara Selamat Datang (Mobile)');
     } catch (error) {
       console.error("Gagal memutar suara selamat datang:", error);
     }
   }
 
+  // useEffect hanya berjalan sekali saat komponen dimuat
   useEffect(() => {
-    // Panggil kedua fungsi audio saat komponen pertama kali muncul
-    playWelcomeSound();
-    playBackgroundMusic(); // <-- PENTING: Panggil fungsi musik di sini
+    playWelcomeSound(); // Coba putar suara selamat datang
     
-    // Fungsi cleanup ini hanya untuk suara "selamat datang" agar tidak bocor memori.
-    // Musik latar akan terus berjalan.
+    // Fungsi cleanup untuk membersihkan suara selamat datang dari memori
     return () => {
       if (sound) {
         console.log('Unloading Suara Selamat Datang');
         sound.unloadAsync();
       }
     };
-  }, []); // Dependency array kosong memastikan ini hanya berjalan sekali
+  }, []); // Array kosong berarti ini hanya berjalan sekali
 
+  // Fungsi yang dipanggil saat tombol "Mulai Belajar" ditekan
+  const handleStartPress = () => {
+    // Ini adalah interaksi pertama pengguna, jadi aman untuk memulai musik
+    playBackgroundMusic();
+    
+    // Setelah itu, navigasi ke layar kategori
+    navigation.navigate('Category');
+  };
 
   return (
     <ImageBackground 
@@ -55,8 +65,8 @@ const MainMenuScreen = ({ navigation }) => {
         <View style={styles.buttonContainer}>
           <CustomButton 
             title="Mulai Belajar" 
-            onPress={() => navigation.navigate('Category')} 
-            color="#FF9800" // Warna oranye
+            onPress={handleStartPress} // Gunakan fungsi handle yang baru
+            color="#FF9800"
           />
         </View>
       </View>
@@ -64,7 +74,7 @@ const MainMenuScreen = ({ navigation }) => {
   );
 };
 
-// Stylesheet tetap sama, tidak perlu diubah
+// Stylesheet tetap sama
 const styles = StyleSheet.create({
   background: {
     flex: 1,
