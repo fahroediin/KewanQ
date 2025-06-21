@@ -3,24 +3,21 @@
 import { create } from 'zustand';
 import { Audio } from 'expo-av';
 
-// Variabel untuk menyimpan objek musik agar bisa diakses di luar scope
 let backgroundSoundObject = null;
 
 export const useGameStore = create((set, get) => ({
-  // === BAGIAN STATE ===
+  // === STATE ===
   isMusicStarted: false,
   currentAnimals: [],
   currentAnimalIndex: 0,
   tapCount: 0,
   isLoading: true,
-  sound: null, // Untuk suara hewan
+  sound: null,
 
-  // === BAGIAN FUNGSI-FUNGSI (ACTIONS) ===
+  // === ACTIONS ===
 
-  // --- Fungsi untuk Musik Latar ---
   playBackgroundMusic: async () => {
     if (get().isMusicStarted) return;
-    console.log('Memuat Musik Latar...');
     try {
       const { sound } = await Audio.Sound.createAsync(
         require('../assets/audio/music/background-music.mp3'),
@@ -29,37 +26,21 @@ export const useGameStore = create((set, get) => ({
       backgroundSoundObject = sound;
       await backgroundSoundObject.playAsync();
       set({ isMusicStarted: true });
-      console.log('Musik Latar Diputar.');
-    } catch (error) {
-      console.error("Gagal memutar musik latar:", error);
-    }
-  },
-
-  stopBackgroundMusic: async () => {
-    if (backgroundSoundObject) {
-      console.log('Menghentikan Musik Latar...');
-      await backgroundSoundObject.unloadAsync();
-      backgroundSoundObject = null;
-      set({ isMusicStarted: false });
-    }
+    } catch (error) { console.error("Gagal memutar musik latar:", error); }
   },
 
   setBackgroundMusicVolume: async (volume) => {
     if (backgroundSoundObject) {
       try {
-        console.log(`Mengatur volume musik latar ke: ${volume}`);
         await backgroundSoundObject.setVolumeAsync(volume);
-      } catch (error) {
-        console.error("Gagal mengatur volume:", error);
-      }
+      } catch (error) { console.error("Gagal mengatur volume:", error); }
     }
   },
 
   resetBackgroundMusicVolume: async () => {
-    await get().setBackgroundMusicVolume(0.5); // Kembalikan ke volume default (50%)
+    await get().setBackgroundMusicVolume(0.5);
   },
   
-  // --- Fungsi untuk Logika Game ---
   loadCategory: (animals) => {
     set({
       currentAnimals: animals,
@@ -69,7 +50,6 @@ export const useGameStore = create((set, get) => ({
     });
   },
 
-  // --- FUNGSI onAnimalTap YANG SUDAH DIPERBAIKI ---
   onAnimalTap: async () => {
     const { currentAnimals, currentAnimalIndex, tapCount, sound } = get();
     if (sound) await sound.unloadAsync();
@@ -77,20 +57,16 @@ export const useGameStore = create((set, get) => ({
     const animal = currentAnimals[currentAnimalIndex];
     if (!animal) return;
 
-    // Perbarui tapCount DI AWAL untuk update UI segera
     const nextTapCount = tapCount + 1;
     set({ tapCount: nextTapCount });
 
     let audioUri;
-    // Gunakan tapCount LAMA (sebelum ditambah) untuk menentukan audio yang diputar
     switch (tapCount) { 
       case 0: audioUri = animal.audioNamePath; break;
       case 1: audioUri = animal.audioCharPath; break;
       case 2: audioUri = animal.audioFoodPath; break;
       case 3: audioUri = animal.audioReproPath; break;
       default:
-        // Jika tapCount sudah 4 atau lebih, _nextAnimal seharusnya sudah berjalan
-        // Ini sebagai pengaman saja
         get()._nextAnimal();
         return;
     }
@@ -103,7 +79,6 @@ export const useGameStore = create((set, get) => ({
         set({ sound: newSound });
         await newSound.playAsync();
         
-        // Tambahkan listener HANYA jika ini adalah tap terakhir
         if (isLastTap) {
           newSound.setOnPlaybackStatusUpdate(status => {
             if (status.didJustFinish) {
@@ -113,7 +88,6 @@ export const useGameStore = create((set, get) => ({
           });
         }
       } catch (e) {
-        console.error("Gagal memutar suara hewan:", e);
         if(isLastTap) get()._nextAnimal();
       }
     } else if (isLastTap) {
@@ -124,21 +98,29 @@ export const useGameStore = create((set, get) => ({
   _nextAnimal: () => {
     const { currentAnimalIndex, currentAnimals } = get();
     if (currentAnimalIndex < currentAnimals.length - 1) {
-      // Jika BUKAN hewan terakhir, pindah ke selanjutnya
       set({
         currentAnimalIndex: currentAnimalIndex + 1,
         tapCount: 0,
       });
-      return false; // Kembalikan false karena belum selesai
     } else {
-      // Jika INI ADALAH hewan terakhir
-      console.log("Kategori Selesai! Mereset state.");
+      console.log("Kategori Selesai! Mereset state hewan.");
+      // **PERBAIKAN KUNCI:** Jangan set isLoading: true di sini.
+      // Biarkan isLoading tetap false agar useEffect di LearningScreen bisa mendeteksi kondisi akhir.
       set({
         currentAnimals: [],
         currentAnimalIndex: 0,
         tapCount: 0,
       });
-      return true; // Kembalikan true untuk menandakan kategori selesai
     }
+  },
+
+  // Fungsi ini memastikan state kembali ke awal sebelum masuk LearningScreen
+  resetLearningState: () => {
+    set({
+      currentAnimals: [],
+      currentAnimalIndex: 0,
+      tapCount: 0,
+      isLoading: true, 
+    });
   },
 }));

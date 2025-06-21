@@ -1,119 +1,102 @@
 // File: screens/LearningScreen.js
 
 import React, { useCallback, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, Text } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import AnimalDisplay from '../components/AnimalDisplay';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AnimatedBackground from '../components/AnimatedBackground';
+import { playClickSound } from '../utils/audioHelper';
 
 const LearningScreen = ({ navigation, route }) => {
-  const { categoryId } = route.params;
-
-  // Ambil semua state yang dibutuhkan dari store
+  // Ambil state secara reaktif dari store
   const isLoading = useGameStore(state => state.isLoading);
   const currentAnimals = useGameStore(state => state.currentAnimals);
   const currentAnimalIndex = useGameStore(state => state.currentAnimalIndex);
   const tapCount = useGameStore(state => state.tapCount);
   
-  const {
-    loadCategory,
-    onAnimalTap,
-    setBackgroundMusicVolume,
-    resetBackgroundMusicVolume,
-  } = useGameStore.getState();
+  // Ambil actions dari store
+  const { onAnimalTap, setBackgroundMusicVolume, resetBackgroundMusicVolume } = useGameStore.getState();
 
-  // Hook untuk memuat data dan mengelola audio saat layar menjadi fokus/ditinggalkan
   useFocusEffect(
     useCallback(() => {
+      // Tugasnya sekarang HANYA mengelola volume musik
       setBackgroundMusicVolume(0.1);
-      
-      const getAnimalsForCategory = async () => {
-        const animalsJson = await AsyncStorage.getItem('animals');
-        const allAnimals = animalsJson ? JSON.parse(animalsJson) : [];
-        const filteredAnimals = allAnimals.filter(animal => animal.category_id === categoryId);
-        loadCategory(filteredAnimals);
-      };
-      getAnimalsForCategory();
 
+      // Fungsi cleanup saat meninggalkan layar
       return () => {
         resetBackgroundMusicVolume();
       };
-    }, [categoryId, loadCategory, resetBackgroundMusicVolume, setBackgroundMusicVolume])
+    }, []) // Dependency array bisa dikosongkan karena tidak ada ketergantungan
   );
 
   // Hook untuk kembali otomatis setelah kategori selesai
   useEffect(() => {
-    // KONDISI INI ADALAH KUNCI:
-    // Jika tidak sedang loading DAN array hewan kosong, artinya kategori selesai
     if (!isLoading && currentAnimals.length === 0) {
       setTimeout(() => {
-        console.log("Navigasi kembali karena kategori selesai.");
         navigation.goBack();
       }, 500);
     }
   }, [isLoading, currentAnimals, navigation]);
 
   const handleGoBack = () => {
+    playClickSound();
     navigation.goBack();
   };
   
-  if (isLoading || currentAnimals.length === 0) {
+  // Tampilan loading sekarang hanya akan muncul sesaat jika ada jeda render
+  if (isLoading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-      </View>
+      <AnimatedBackground source={require('../assets/images/backgrounds/learning-bg.png')}>
+          <View style={styles.container}>
+              <ActivityIndicator size="large" color="#4CAF50" />
+          </View>
+      </AnimatedBackground>
     );
+  }
+
+  // Fallback jika tidak ada hewan (seharusnya tidak terjadi dengan pre-fetching)
+  if (currentAnimals.length === 0) {
+      return (
+        <AnimatedBackground source={require('../assets/images/backgrounds/learning-bg.png')}>
+          <View style={styles.container}>
+            <Text>Tidak ada hewan untuk ditampilkan.</Text>
+          </View>
+        </AnimatedBackground>
+      );
   }
 
   const currentAnimal = currentAnimals[currentAnimalIndex];
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-        <Ionicons name="arrow-back-circle" size={48} color="#4CAF50" />
-      </TouchableOpacity>
-      <AnimalDisplay animal={currentAnimal} onTap={onAnimalTap} />
-      <View style={styles.tapIndicatorContainer}>
-        {Array(4).fill(0).map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.tapIndicatorDot,
-              { backgroundColor: tapCount > index ? '#4CAF50' : '#d3d3d3' }
-            ]}
-          />
-        ))}
-      </View>
-    </View>
+    <AnimatedBackground source={require('../assets/images/backgrounds/learning-bg.png')}>
+        <View style={styles.container}>
+          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+              <Ionicons name="arrow-back-circle" size={48} color="#4CAF50" />
+          </TouchableOpacity>
+          <AnimalDisplay animal={currentAnimal} onTap={onAnimalTap} />
+          <View style={styles.tapIndicatorContainer}>
+              {Array(4).fill(0).map((_, index) => (
+              <View
+                  key={index}
+                  style={[
+                  styles.tapIndicatorDot,
+                  { backgroundColor: tapCount > index ? '#4CAF50' : '#d3d3d3' }
+                  ]}
+              />
+              ))}
+          </View>
+        </View>
+    </AnimatedBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0FFF0',
-  },
-  backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    left: 20,
-    zIndex: 10,
-  },
-  tapIndicatorContainer: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: 50,
-  },
-  tapIndicatorDot: {
-    width: 15,
-    height: 15,
-    borderRadius: 7.5,
-    marginHorizontal: 8,
-  },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  backButton: { position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 10 },
+  tapIndicatorContainer: { flexDirection: 'row', position: 'absolute', bottom: 50 },
+  tapIndicatorDot: { width: 15, height: 15, borderRadius: 7.5, marginHorizontal: 8 },
 });
 
 export default LearningScreen;
