@@ -1,36 +1,69 @@
+// File: store/gameStore.js
+
 import { create } from 'zustand';
 import { Audio } from 'expo-av';
 
+// --- Variabel untuk musik dipindahkan ke luar agar bisa diakses ---
+let backgroundSoundObject = null;
+
 export const useGameStore = create((set, get) => ({
+  // === BAGIAN STATE ===
   currentAnimals: [],
   currentAnimalIndex: 0,
   tapCount: 0,
-  isLoading: false,
-  sound: null,
+  isLoading: true, // Set default isLoading ke true
+  sound: null, // Untuk suara hewan
 
-  // Fungsi untuk memuat hewan dari penyimpanan lokal
+  // === BAGIAN FUNGSI-FUNGSI (ACTIONS) ===
+
+  // --- Fungsi untuk Musik Latar ---
+  playBackgroundMusic: async () => {
+    if (backgroundSoundObject) {
+      const status = await backgroundSoundObject.getStatusAsync();
+      if (status.isPlaying) return;
+    }
+
+    console.log('Memuat Musik Latar...');
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/audio/music/background-music.mp3'), // Pastikan path ini benar
+        { isLooping: true, volume: 0.5 }
+      );
+      backgroundSoundObject = sound;
+      await backgroundSoundObject.playAsync();
+      console.log('Musik Latar Diputar.');
+    } catch (error) {
+      console.error("Gagal memutar musik latar:", error);
+    }
+  },
+
+  stopBackgroundMusic: async () => {
+    if (backgroundSoundObject) {
+      console.log('Menghentikan Musik Latar...');
+      await backgroundSoundObject.unloadAsync();
+      backgroundSoundObject = null;
+    }
+  },
+  
+  // --- Fungsi untuk Game ---
   loadCategory: (animals) => {
+    console.log("Memuat kategori dengan hewan:", animals.length);
     set({
       currentAnimals: animals,
       currentAnimalIndex: 0,
       tapCount: 0,
-      isLoading: false,
+      isLoading: false, // Set isLoading ke false setelah data dimuat
     });
   },
 
-  // Fungsi utama saat gambar hewan ditekan
   onAnimalTap: async () => {
     const { currentAnimals, currentAnimalIndex, tapCount, sound } = get();
-    
-    // Unload suara sebelumnya jika ada
-    if (sound) {
-      await sound.unloadAsync();
-    }
+    if (sound) await sound.unloadAsync();
 
     const animal = currentAnimals[currentAnimalIndex];
-    let audioUri;
+    if (!animal) return;
 
-    // Tentukan file suara yang akan diputar dari URI lokal
+    let audioUri;
     switch (tapCount) {
       case 0: audioUri = animal.audioNamePath; break;
       case 1: audioUri = animal.audioCharPath; break;
@@ -38,29 +71,25 @@ export const useGameStore = create((set, get) => ({
       case 3: audioUri = animal.audioReproPath; break;
     }
 
-    // Putar suara dari file lokal
     if (audioUri) {
-      const { sound: newSound } = await Audio.Sound.createAsync(
-         { uri: audioUri }
-      );
-      set({ sound: newSound });
-      await newSound.playAsync();
-
-      // Listener untuk pindah hewan setelah suara selesai
-      newSound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.didJustFinish) {
-          if (get().tapCount >= 3) {
+      try {
+        const { sound: newSound } = await Audio.Sound.createAsync({ uri: audioUri });
+        set({ sound: newSound });
+        await newSound.playAsync();
+        newSound.setOnPlaybackStatusUpdate(status => {
+          if (status.didJustFinish && get().tapCount >= 3) {
             get()._nextAnimal();
           }
-        }
-      });
+        });
+      } catch (e) {
+        console.error("Gagal memutar suara hewan:", e);
+      }
     }
 
-    // Update state tapCount
     if (tapCount < 3) {
       set({ tapCount: tapCount + 1 });
     } else {
-      // Reset akan dihandle oleh listener di atas
+      // Dihandle oleh listener di atas
     }
   },
 
@@ -69,11 +98,11 @@ export const useGameStore = create((set, get) => ({
     if (currentAnimalIndex < currentAnimals.length - 1) {
       set(state => ({
         currentAnimalIndex: state.currentAnimalIndex + 1,
-        tapCount: 0, // Reset tap count untuk hewan baru
+        tapCount: 0,
       }));
     } else {
       console.log("Kategori Selesai!");
-      // Di sini Anda bisa trigger navigasi kembali ke menu
+      // Nanti bisa tambahkan navigasi kembali
     }
   },
 }));
