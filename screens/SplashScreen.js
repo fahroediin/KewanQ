@@ -12,19 +12,19 @@ const SplashScreen = ({ navigation }) => {
   useEffect(() => {
     const initializeGame = async () => {
       try {
-        // --- LOGIKA CACHING DI-AKTIFKAN KEMBALI ---
-        // Ini mencegah download berulang kali jika data sudah ada di HP
-        // Hanya berlaku untuk mobile, web akan selalu mengambil data terbaru (tanpa download)
-        if (Platform.OS !== 'web') {
-            const isDataCached = await AsyncStorage.getItem('isDataCached');
-            if (isDataCached === 'true') {
-              setStatus('Data sudah siap! Memulai game...');
-              setTimeout(() => navigation.replace('MainMenu'), 1000); // Jeda agar tulisan terbaca
-              return;
-            }
-        }
+        // --- BLOK KODE BARU UNTUK MENGHAPUS CACHE LAMA ---
+        // Ini akan berjalan setiap kali aplikasi dimulai.
+        console.log("!!! Memaksa penghapusan cache lama dari AsyncStorage untuk development !!!");
+        await AsyncStorage.removeItem('isDataCached');
+        await AsyncStorage.removeItem('categories');
+        await AsyncStorage.removeItem('animals');
+        console.log("Cache lama berhasil dihapus.");
+        // ---------------------------------------------------------
         
-        console.log("--- DEBUG SplashScreen: Mulai Inisialisasi Data Baru ---");
+        // Logika caching yang ada sebelumnya sekarang tidak lagi diperlukan
+        // karena kita selalu menghapus cache di atas.
+
+        console.log("--- DEBUG SplashScreen: Memulai Inisialisasi Data Baru ---");
 
         setStatus('Menghubungi server...');
         const { data: categories, error: catError } = await supabase.from('categories').select('*');
@@ -35,13 +35,18 @@ const SplashScreen = ({ navigation }) => {
         
         console.log(`Ditemukan ${animals.length} data hewan untuk diunduh.`);
         
+        // Jika tidak ada data hewan sama sekali, hentikan lebih awal
+        if (!animals || animals.length === 0) {
+            setStatus('Tidak ada data hewan yang ditemukan di server.');
+            return; // Hentikan proses
+        }
+
         const animalsWithLocalPaths = [];
         const totalDownloads = animals.length;
         let currentDownload = 0;
 
         for (const animal of animals) {
           currentDownload++;
-          // --- TEKS STATUS YANG LEBIH INFORMATIF ---
           setStatus(`Mengunduh data... (${currentDownload}/${totalDownloads})`);
 
           const imagePath = await downloadAsset(animal.image_url);
@@ -56,7 +61,7 @@ const SplashScreen = ({ navigation }) => {
         setStatus('Menyimpan data ke perangkat...');
         await AsyncStorage.setItem('categories', JSON.stringify(categories));
         await AsyncStorage.setItem('animals', JSON.stringify(animalsWithLocalPaths));
-        await AsyncStorage.setItem('isDataCached', 'true');
+        await AsyncStorage.setItem('isDataCached', 'true'); // Tandai bahwa cache sudah ada (untuk rilis nanti)
         console.log("Data berhasil disimpan ke AsyncStorage.");
         
         setStatus('Selesai! Memulai game...');
@@ -72,16 +77,14 @@ const SplashScreen = ({ navigation }) => {
   }, [navigation]);
 
   return (
-    // Bagian return ini tidak diubah, karena sudah berfungsi dengan benar untuk Anda
     <View style={styles.container}>
-      <Image source={require('../assets/kewanq-logo.png')} style={styles.logo} />
+      <Image source={require('../assets/images/kewanq-logo.png')} style={styles.logo} />
       <ActivityIndicator size="large" color="#FF6347" /> 
       <Text style={styles.statusText}>{status}</Text>
     </View>
   );
 };
 
-// Stylesheet yang disempurnakan
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -90,8 +93,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0F5',
   },
   logo: {
-    width: 250, // Ukuran logo bisa disesuaikan
-    height: 150, // Ukuran logo bisa disesuaikan
+    width: 250,
+    height: 150,
     resizeMode: 'contain',
     marginBottom: 50,
   },

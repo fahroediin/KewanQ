@@ -137,7 +137,6 @@ export const useGameStore = create((set, get) => ({
         currentAnimals: [],
         currentAnimalIndex: 0,
         tapCount: 0,
-        isLoading: true,
       });
       return true; // Kembalikan true untuk menandakan kategori selesai
     }

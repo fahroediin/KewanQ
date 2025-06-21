@@ -1,108 +1,106 @@
 // File: screens/MainMenuScreen.js
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, Platform } from 'react-native';
-import CustomButton from '../components/CustomButton.js';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Animated, StatusBar } from 'react-native';
 import { Audio } from 'expo-av';
 import { useGameStore } from '../store/gameStore';
+import AnimatedBackground from '../components/AnimatedBackground'; // Pastikan komponen ini diimpor
 
 const MainMenuScreen = ({ navigation }) => {
-  const [sound, setSound] = useState(); // State lokal untuk suara selamat datang
+  const [sound, setSound] = useState();
   const playBackgroundMusic = useGameStore(state => state.playBackgroundMusic);
+  
+  const scaleValue = useRef(new Animated.Value(1)).current;
 
-  // Fungsi untuk memutar suara selamat datang
-  async function playWelcomeSound() {
-    // Cek platform: Hanya putar otomatis di mobile (bukan web)
-    if (Platform.OS === 'web') {
-      console.log("Autoplay suara selamat datang dilewati di web.");
-      return;
-    }
-
-    try {
-      console.log('Memuat Suara Selamat Datang (Mobile)');
-      const { sound: welcomeSound } = await Audio.Sound.createAsync(
-         require('../assets/audio/selamat-datang.mp3')
-      );
-      setSound(welcomeSound);
-      
-      await welcomeSound.playAsync(); 
-      console.log('Memutar Suara Selamat Datang (Mobile)');
-    } catch (error) {
-      console.error("Gagal memutar suara selamat datang:", error);
-    }
-  }
-
-  // useEffect hanya berjalan sekali saat komponen dimuat
+  // useEffect untuk suara selamat datang (logika tidak diubah)
   useEffect(() => {
-    playWelcomeSound(); // Coba putar suara selamat datang
-    
-    // Fungsi cleanup untuk membersihkan suara selamat datang dari memori
-    return () => {
-      if (sound) {
-        console.log('Unloading Suara Selamat Datang');
-        sound.unloadAsync();
+    async function playWelcomeSound() {
+      if (Platform.OS === 'web') return;
+      try {
+        const { sound: welcomeSound } = await Audio.Sound.createAsync(
+           require('../assets/audio/selamat-datang.mp3')
+        );
+        setSound(welcomeSound);
+        await welcomeSound.playAsync(); 
+      } catch (error) {
+        console.error("Gagal memutar suara selamat datang:", error);
       }
-    };
-  }, []); // Array kosong berarti ini hanya berjalan sekali
-
-  // Fungsi yang dipanggil saat tombol "Mulai Belajar" ditekan
-  const handleStartPress = () => {
-    // Ini adalah interaksi pertama pengguna, jadi aman untuk memulai musik
-    playBackgroundMusic();
+    }
     
-    // Setelah itu, navigasi ke layar kategori
-    navigation.navigate('Category');
+    playWelcomeSound();
+    
+    return () => {
+      if (sound) sound.unloadAsync();
+    };
+  }, []);
+
+  const handleStartPress = () => {
+    playBackgroundMusic();
+    navigation.navigate('ModeSelection');
   };
+  
+  const onPressIn = () => Animated.spring(scaleValue, { toValue: 0.95, useNativeDriver: true }).start();
+  const onPressOut = () => Animated.spring(scaleValue, { toValue: 1, useNativeDriver: true }).start();
 
   return (
-    <ImageBackground 
-      source={require('../assets/images/backgrounds/main-menu-bg.png')} 
-      style={styles.background}
+    // Panggil AnimatedBackground dan kirimkan source gambar latar belakang utama
+    <AnimatedBackground 
+      source={require('../assets/images/backgrounds/main-menu-bg.png')}
     >
+      <StatusBar barStyle="light-content" />
+      
+      {/* Container ini akan berada DI ATAS AnimatedBackground */}
       <View style={styles.container}>
-        <Text style={styles.title}>KewanQ</Text>
-        <Text style={styles.subtitle}>Ayo Belajar Mengenal Hewan!</Text>
-        <View style={styles.buttonContainer}>
-          <CustomButton 
-            title="Mulai Belajar" 
-            onPress={handleStartPress} // Gunakan fungsi handle yang baru
-            color="#FF9800"
-          />
-        </View>
+        
+        {/* Tombol "Mulai" dengan gaya custom */}
+        <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={handleStartPress}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.startButtonText}>Mulai</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
-    </ImageBackground>
+    </AnimatedBackground>
   );
 };
 
-// Stylesheet tetap sama
+// Stylesheet yang dirancang ulang untuk layout ini
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    resizeMode: 'cover',
-  },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'flex-end', // Mendorong semua konten ke bawah
+    alignItems: 'center',       // Memusatkan konten secara horizontal
   },
-  title: {
-    fontSize: 80,
+  startButton: {
+    backgroundColor: '#ff6b6b',
+    paddingVertical: 18,
+    paddingHorizontal: 70,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: 'white',
+    borderBottomWidth: 10,
+    borderBottomColor: '#c94a4a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+    marginBottom: '20%', // Jarak tombol dari bagian paling bawah layar
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#386641',
-    fontFamily: 'sans-serif-condensed',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 3,
   },
-  subtitle: {
-    fontSize: 20,
-    color: '#6A994E',
-    marginBottom: 50,
-  },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 50,
-    width: '100%',
-    alignItems: 'center',
-  }
 });
 
 export default MainMenuScreen;
