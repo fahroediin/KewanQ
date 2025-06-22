@@ -58,55 +58,56 @@ const AnimatedCloud = ({ image, duration, startOffset, top, size }) => {
 
 const AnimatedBackground = ({ children, source }) => {
   return (
+    // Kita gunakan 'source' yang dikirimkan melalui props
     <ImageBackground
       source={source}
-      style={styles.background}
+      style={styles.background} // Style sekarang akan membuatnya selalu di belakang
       resizeMode="cover"
     >
-      {/* --- UKURAN DAN JUMLAH AWAN DIPERBARUI DI SINI --- */}
-
-      {/* Awan 1 (Besar, di depan, lebih cepat) */}
+      {/* Awan-awan akan ditampilkan di atas gambar latar belakang ini */}
       <AnimatedCloud 
         image={require('../assets/images/animations/cloud1.png')} 
-        duration={35000} // Durasi 35 detik
-        startOffset={0}   // Mulai dari awal
+        duration={35000}
+        startOffset={0}
         top={60}
-        size={220}        // Ukuran diperbesar
+        size={220}
       />
-
-      {/* Awan 2 (Sedang, di tengah, paling lambat) */}
       <AnimatedCloud 
         image={require('../assets/images/animations/cloud2.png')} 
-        duration={70000} // Durasi 70 detik (sangat lambat)
-        startOffset={0.6} // Mulai agak jauh di depan
+        duration={70000}
+        startOffset={0.6}
         top={120}
-        size={180}        // Ukuran diperbesar
+        size={180}
       />
-      
-      {/* Awan 3 (Kecil, di belakang, kecepatan sedang) - ASET BARU */}
       <AnimatedCloud 
         image={require('../assets/images/animations/cloud3.png')} 
-        duration={50000} // Durasi 50 detik
-        startOffset={0.3} // Mulai sedikit di depan
+        duration={50000}
+        startOffset={0.3}
         top={40}
-        size={160}        // Ukuran diperbesar
+        size={160}
       />
-
+      
+      {/* 'children' sekarang tidak lagi digunakan karena background ini akan
+          selalu berada di belakang semua elemen lain di layar pemanggilnya.
+          Kita bisa menghapusnya, atau membiarkannya jika ada kasus penggunaan lain.
+          Untuk keamanan, kita biarkan saja. */}
       {children}
     </ImageBackground>
   );
 };
 
+// Stylesheet yang diperbarui dengan zIndex
 const styles = StyleSheet.create({
   background: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+    // KUNCI UTAMA: Membuat komponen ini menutupi seluruh layar
+    // dan berada di lapisan paling bawah.
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -1, // Paksa untuk selalu menjadi lapisan paling belakang
   },
   cloud: {
     position: 'absolute',
     resizeMode: 'contain',
-    opacity: 0.9, // Sedikit lebih jelas
+    opacity: 0.9,
   },
 });
 

@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { View, StyleSheet, Image, TouchableOpacity, Animated, ImageBackground, StatusBar } from 'react-native';
 import { playClickSound } from '../utils/audioHelper';
 
+
 const ModeSelectionScreen = ({ navigation }) => {
   // Animasi untuk setiap tombol
   const scaleBelajar = useRef(new Animated.Value(1)).current;
