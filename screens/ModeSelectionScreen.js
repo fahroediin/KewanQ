@@ -5,20 +5,15 @@ import { View, StyleSheet, Image, TouchableOpacity, Animated, ImageBackground, S
 import { playClickSound } from '../utils/audioHelper';
 
 const ModeSelectionScreen = ({ navigation }) => {
-  // Animasi untuk setiap tombol
   const scaleBelajar = useRef(new Animated.Value(1)).current;
   const scaleKuis = useRef(new Animated.Value(1)).current;
 
-  // Fungsi wrapper untuk menangani klik
   const handlePress = (scaleAnim, action) => {
     playClickSound();
-    
-    // Animasi tekan
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.95, duration: 80, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 80, useNativeDriver: true }),
     ]).start(() => {
-      // Jalankan aksi setelah animasi selesai
       action();
     });
   };
@@ -40,10 +35,13 @@ const ModeSelectionScreen = ({ navigation }) => {
         <Animated.View style={[styles.buttonWrapper, styles.belajarWrapper, { transform: [{ scale: scaleBelajar }] }]}>
           <TouchableOpacity
             onPress={() => handlePress(scaleBelajar, actionBelajar)}
-            style={[styles.button, styles.belajarButton]}
-            activeOpacity={1}
+            activeOpacity={0.9}
           >
-            <Image source={require('../assets/images/text/text-belajar.png')} style={styles.buttonText} />
+            {/* Gunakan Image untuk menampilkan aset tombol Anda */}
+            <Image 
+              source={require('../assets/images/buttons/button-belajar.png')} 
+              style={styles.buttonImage} 
+            />
           </TouchableOpacity>
         </Animated.View>
         
@@ -51,10 +49,13 @@ const ModeSelectionScreen = ({ navigation }) => {
         <Animated.View style={[styles.buttonWrapper, styles.kuisWrapper, { transform: [{ scale: scaleKuis }] }]}>
           <TouchableOpacity
             onPress={() => handlePress(scaleKuis, actionKuis)}
-            style={[styles.button, styles.kuisButton]}
-            activeOpacity={1}
+            activeOpacity={0.9}
           >
-            <Image source={require('../assets/images/text/text-kuis.png')} style={styles.buttonText} />
+            {/* Gunakan Image untuk menampilkan aset tombol Anda */}
+            <Image 
+              source={require('../assets/images/buttons/button-kuis.png')} 
+              style={styles.buttonImage} 
+            />
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -62,6 +63,7 @@ const ModeSelectionScreen = ({ navigation }) => {
   );
 };
 
+// Stylesheet yang disederhanakan untuk tombol berbasis gambar
 const styles = StyleSheet.create({
   background: {
     flex: 1,
@@ -69,7 +71,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-    logo: {
+  logo: {
     position: 'absolute',
     top: 50,
     right: 20,
@@ -79,43 +81,32 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   buttonWrapper: {
-    // Semua wrapper tombol sekarang absolut
     position: 'absolute',
-    width: '100%', // Ambil lebar penuh untuk mempermudah pemusatan
-    alignItems: 'center', // Pusatkan tombol di dalam wrapper
+    width: '100%',
+    alignItems: 'center',
+    // Efek miring dipertahankan di sini
+    transform: [{ rotate: '-4deg' }],
+    // Efek bayangan diterapkan di sini
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    // Elevation untuk Android tidak akan terlalu terlihat pada gambar transparan
   },
   belajarWrapper: {
-    // Atur posisi dari atas
-    top: '39%', 
+    top: '38%', 
   },
   kuisWrapper: {
-    // Atur posisi dari atas, lebih rendah dari tombol belajar
-    top: '54%',
+    top: '52%',
   },
-  button: {
-    width: 300,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    transform: [{ rotate: '-7deg' }],
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  buttonImage: {
+    // Style untuk gambar tombolnya
+    width: 300, // Sesuaikan lebar gambar tombol Anda
+    height: 100, // Sesuaikan tinggi gambar tombol Anda
+    resizeMode: 'contain', // Penting agar gambar tidak terdistorsi
   },
-  belajarButton: {
-    backgroundColor: '#9CCC65',
-  },
-  kuisButton: {
-    backgroundColor: '#d5840c',
-  },
-  buttonText: {
-    width: '70%',
-    height: '70%',
-    resizeMode: 'contain',
-  },
+  // Style lama untuk .button, .belajarButton, .kuisButton, dan .buttonText sudah dihapus
+  // karena tidak lagi diperlukan.
 });
 
 export default ModeSelectionScreen;
