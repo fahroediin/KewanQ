@@ -36,6 +36,9 @@ export const preloadAssets = async () => {
     require('../assets/images/buttons/icon-back.png'),
     require('../assets/images/backgrounds/category-bg.png'),
     require('../assets/images/backgrounds/learning-bg.png'),
+    require('../assets/images/backgrounds/mode-selection-bg.png'),
+    require('../assets/images/buttons/button-belajar.png'),
+    require('../assets/images/buttons/button-kuis.png'),
   ]);
 
   // Daftar semua suara lokal yang penting

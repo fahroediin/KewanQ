@@ -6,82 +6,72 @@ import { Audio } from 'expo-av';
 import { useGameStore } from '../store/gameStore';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { playClickSound } from '../utils/audioHelper';
+import { preloadAssets } from '../utils/assetPreloader';
 
 const MainMenuScreen = ({ navigation }) => {
   const [welcomeSound, setWelcomeSound] = useState();
+  const [isTransitioning, setIsTransitioning] = useState(false); // State untuk loading
   const playBackgroundMusic = useGameStore(state => state.playBackgroundMusic);
   
   const scaleValue = useRef(new Animated.Value(1)).current;
 
-  // --- useEffect YANG DIPERBARUI UNTUK ALUR AUDIO BERURUTAN ---
+  // useEffect untuk suara selamat datang
   useEffect(() => {
     let isMounted = true;
-
     async function setupSounds() {
-      // Hanya jalankan di mobile
-      if (Platform.OS === 'web') {
-        // Di web, musik akan diputar saat tombol ditekan
-        return;
-      }
-      
+      if (Platform.OS === 'web') return;
       try {
-        console.log("Memuat Suara Selamat Datang...");
-        const { sound } = await Audio.Sound.createAsync(
-           require('../assets/audio/selamat-datang.mp3')
-        );
-
+        const { sound } = await Audio.Sound.createAsync(require('../assets/audio/selamat-datang.mp3'));
         if (isMounted) {
           setWelcomeSound(sound);
-          
-          // Tambahkan listener untuk mendeteksi kapan suara selesai
           sound.setOnPlaybackStatusUpdate(status => {
             if (status.didJustFinish) {
-              console.log("Suara Selamat Datang Selesai. Memutar Musik Latar...");
-              // Setelah selesai, putar musik latar
               playBackgroundMusic();
-              // Hapus listener agar tidak berjalan lagi
               sound.setOnPlaybackStatusUpdate(null);
             }
           });
-
           await sound.playAsync();
-          console.log("Suara Selamat Datang Diputar.");
         }
       } catch (error) { 
-        console.error("Gagal memutar suara selamat datang, mencoba putar musik latar langsung.", error);
-        playBackgroundMusic(); // Fallback: jika suara selamat datang gagal, langsung putar musik
+        playBackgroundMusic();
       }
     }
-    
     setupSounds();
-    
-    // Fungsi cleanup
     return () => {
       isMounted = false;
-      if (welcomeSound) {
-        console.log("Unloading Suara Selamat Datang.");
-        welcomeSound.unloadAsync();
-      }
+      if (welcomeSound) welcomeSound.unloadAsync();
     };
-  }, []); // Array dependency kosong memastikan ini hanya berjalan sekali
+  }, []);
 
-  // Fungsi yang dipanggil saat tombol "Mulai" ditekan
+  // --- FUNGSI handleStartPress YANG MENGGUNAKAN assetPreloader ---
   const handleStartPress = async () => {
-    // Hentikan suara selamat datang jika masih berjalan
+    if (isTransitioning) return;
+    
+    // 1. Tampilkan loading overlay dan hentikan suara
+    setIsTransitioning(true);
     if (welcomeSound) {
       await welcomeSound.stopAsync();
-      await welcomeSound.unloadAsync();
     }
     
     playClickSound();
-    playBackgroundMusic(); // Pastikan musik tetap diputar jika pengguna menekan tombol sebelum suara selamat datang selesai
+    playBackgroundMusic();
     
+    // 2. Panggil fungsi preloader kita
+    // Ini akan memuat SEMUA aset penting, memastikan semua layar berikutnya siap
+    try {
+      console.log("Memulai preloading semua aset penting...");
+      await preloadAssets();
+      console.log("Preloading selesai.");
+    } catch (e) {
+      console.error("Gagal pre-load aset:", e);
+    }
+    
+    // 3. Setelah aset siap, baru navigasi
     navigation.replace('ModeSelection');
   };
   
   const onPressIn = () => Animated.spring(scaleValue, { toValue: 0.95, useNativeDriver: true }).start();
   const onPressOut = () => Animated.spring(scaleValue, { toValue: 1, useNativeDriver: true }).start();
-
   return (
     <AnimatedBackground>
       <StatusBar barStyle="dark-content" />

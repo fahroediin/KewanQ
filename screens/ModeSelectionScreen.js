@@ -86,11 +86,11 @@ const styles = StyleSheet.create({
   },
   belajarWrapper: {
     // Atur posisi dari atas
-    top: '39%', 
+    top: '35%', 
   },
   kuisWrapper: {
     // Atur posisi dari atas, lebih rendah dari tombol belajar
-    top: '54%',
+    top: '52%',
   },
   button: {
     width: 400,
