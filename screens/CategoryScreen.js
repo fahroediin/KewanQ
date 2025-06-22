@@ -8,13 +8,14 @@ import { Audio } from 'expo-av';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useGameStore } from '../store/gameStore';
 import { playClickSound } from '../utils/audioHelper';
-import LoadingAnimation from '../components/LoadingAnimation'; // Import animasi loading
+import LoadingAnimation from '../components/LoadingAnimation';
 
 const CategoryScreen = ({ navigation }) => {
   const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(true); // Untuk loading awal
+  const [isProcessing, setIsProcessing] = useState(false); // Menggantikan isNavigating dan playingSoundId
+  const [selectedIcon, setSelectedIcon] = useState(null);
+
   const { resetLearningState, loadCategory } = useGameStore.getState();
 
   // useEffect untuk suara intro kategori
@@ -45,28 +46,30 @@ const CategoryScreen = ({ navigation }) => {
 
   // useEffect untuk mereset state saat kembali ke layar ini
   useEffect(() => {
-      const unsubscribe = navigation.addListener('focus', () => {
-          setIsNavigating(false);
-      });
-      return unsubscribe;
+    const unsubscribe = navigation.addListener('focus', () => {
+      setIsProcessing(false);
+      setSelectedIcon(null);
+    });
+    return unsubscribe;
   }, [navigation]);
 
-  // Fungsi yang di-enhance dengan Promise.all
+  // Fungsi yang didesain ulang untuk alur berurutan
   const handleCategoryPress = async (item) => {
-    if (isNavigating) return;
+    if (isProcessing) return;
 
-    // 1. Tampilkan loading overlay dan reset state
-    setIsNavigating(true);
+    // 1. Reset state game dan tandai sedang proses
     resetLearningState();
+    setIsProcessing(true);
+    setSelectedIcon(item.icon_name); // Simpan ikon untuk loading nanti
+
+    // --- TAHAP 1: Putar Suara Dulu ---
+    const soundMap = {
+      'serangga.mp3': require('../assets/audio/categories/serangga.mp3'),
+      'mamalia.mp3': require('../assets/audio/categories/mamalia.mp3'),
+      'unggas.mp3': require('../assets/audio/categories/unggas.mp3'),
+    };
     
-    // TUGAS A: Memainkan Suara Kategori
-    const playSoundPromise = new Promise(async (resolve) => {
-      const soundMap = {
-        'serangga.mp3': require('../assets/audio/categories/serangga.mp3'),
-        'mamalia.mp3': require('../assets/audio/categories/mamalia.mp3'),
-        'unggas.mp3': require('../assets/audio/categories/unggas.mp3'),
-      };
-      
+    const playSoundAndWait = new Promise(async (resolve) => {
       if (item.audio_name && soundMap[item.audio_name]) {
         try {
           const { sound } = await Audio.Sound.createAsync(soundMap[item.audio_name]);
@@ -74,38 +77,36 @@ const CategoryScreen = ({ navigation }) => {
           sound.setOnPlaybackStatusUpdate(status => {
             if (status.didJustFinish) {
               sound.unloadAsync();
-              resolve('sound finished');
+              resolve(); // Selesaikan promise saat suara selesai
             }
           });
-        } catch (e) {
-          console.error("Gagal memutar suara kategori:", e);
-          resolve('sound error');
-        }
+        } catch (e) { resolve(); } // Jika error, langsung lanjut
       } else {
-        resolve('no sound'); // Langsung selesai jika tidak ada suara
+        resolve(); // Jika tidak ada suara, langsung lanjut
       }
     });
 
-    // TUGAS B: Pre-fetching Data Hewan
-    const fetchDataPromise = new Promise(async (resolve) => {
-        try {
-            const animalsJson = await AsyncStorage.getItem('animals');
-            const allAnimals = animalsJson ? JSON.parse(animalsJson) : [];
-            const filteredAnimals = allAnimals.filter(animal => animal.category_id === item.id);
-            loadCategory(filteredAnimals);
-            resolve('data ready');
-        } catch (e) {
-            console.error("Gagal pre-fetch data:", e);
-            loadCategory([]);
-            resolve('data error');
-        }
-    });
+    await playSoundAndWait; // Tunggu sampai suara selesai
 
-    // 2. Tunggu KEDUA tugas selesai
-    await Promise.all([playSoundPromise, fetchDataPromise]);
+    // --- TAHAP 2: Pre-fetch Data (setelah suara selesai) ---
+    // Animasi loading akan otomatis muncul karena isProcessing sudah true
+    try {
+        console.log(`Pre-fetching data untuk kategori ID: ${item.id}`);
+        const animalsJson = await AsyncStorage.getItem('animals');
+        const allAnimals = animalsJson ? JSON.parse(animalsJson) : [];
+        const filteredAnimals = allAnimals.filter(animal => animal.category_id === item.id);
+        loadCategory(filteredAnimals);
+        console.log(`Pre-fetching selesai. Ditemukan ${filteredAnimals.length} hewan.`);
+    } catch (e) {
+        console.error("Gagal pre-fetch data:", e);
+        loadCategory([]);
+    }
 
-    // 3. Setelah semua siap, baru navigasi
-    navigation.navigate('Learning', { categoryId: item.id });
+    // --- TAHAP 3: Navigasi ---
+    // Beri jeda singkat agar loading terasa lebih natural
+    setTimeout(() => {
+      navigation.navigate('Learning', { categoryId: item.id });
+    }, 300); // Jeda 0.3 detik
   };
 
   const handleGoBack = () => {
@@ -137,12 +138,12 @@ const CategoryScreen = ({ navigation }) => {
               title={item.name} 
               iconName={item.icon_name} 
               onPress={() => handleCategoryPress(item)} 
-              disabled={isNavigating} 
+              disabled={isProcessing} 
             />
           ))}
         </View>
         
-        {isNavigating && <LoadingAnimation />}
+        {isProcessing && <LoadingAnimation iconName={selectedIcon} />}
       </View>
     </AnimatedBackground>
   );

@@ -5,32 +5,57 @@ import { View, Text, StyleSheet, Platform, TouchableOpacity, Animated, StatusBar
 import { Audio } from 'expo-av';
 import { useGameStore } from '../store/gameStore';
 import AnimatedBackground from '../components/AnimatedBackground';
-import { playClickSound } from '../utils/audioHelper'; // Import fungsi klik
+import { playClickSound } from '../utils/audioHelper';
 
 const MainMenuScreen = ({ navigation }) => {
-  const [sound, setSound] = useState();
+  const [sound, setSound] = useState(); // State untuk menyimpan objek suara "selamat datang"
   const playBackgroundMusic = useGameStore(state => state.playBackgroundMusic);
   
   const scaleValue = useRef(new Animated.Value(1)).current;
 
+  // useEffect untuk memutar suara selamat datang
   useEffect(() => {
+    let isMounted = true; // Variabel untuk melacak status komponen
     async function playWelcomeSound() {
       if (Platform.OS === 'web') return;
       try {
         const { sound: welcomeSound } = await Audio.Sound.createAsync(
            require('../assets/audio/selamat-datang.mp3')
         );
-        setSound(welcomeSound);
-        await welcomeSound.playAsync(); 
+        // Hanya set state jika komponen masih mounted
+        if (isMounted) {
+          setSound(welcomeSound);
+          await welcomeSound.playAsync();
+        }
       } catch (error) { console.error("Gagal memutar suara selamat datang:", error); }
     }
+    
     playWelcomeSound();
-    return () => { if (sound) sound.unloadAsync(); };
+    
+    // Fungsi cleanup
+    return () => {
+      isMounted = false; // Tandai komponen sudah unmount
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
   }, []);
 
-  const handleStartPress = () => {
-    playClickSound(); // <-- PANGGIL SUARA KLIK
+  // --- FUNGSI handleStartPress YANG DIPERBAIKI ---
+  const handleStartPress = async () => {
+    // 1. Hentikan suara "selamat datang" jika sedang berjalan
+    if (sound) {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+    }
+
+    // 2. Putar suara klik
+    playClickSound();
+    
+    // 3. Putar musik latar
     playBackgroundMusic();
+    
+    // 4. Navigasi ke layar berikutnya
     navigation.navigate('ModeSelection');
   };
   
@@ -41,11 +66,23 @@ const MainMenuScreen = ({ navigation }) => {
     <AnimatedBackground>
       <StatusBar barStyle="dark-content" />
       <View style={styles.stage}>
-        <Image source={require('../assets/images/layers/tanah-dan-semak.png')} style={styles.tanahLayer} />
-        <Image source={require('../assets/images/kewanq-logo.png')} style={styles.logoLayer} />
+        <Image
+          source={require('../assets/images/layers/tanah-dan-semak.png')}
+          style={styles.tanahLayer}
+        />
+        <Image
+          source={require('../assets/images/kewanq-logo.png')}
+          style={styles.logoLayer}
+        />
         <View style={styles.buttonContainer}>
           <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
-            <TouchableOpacity style={styles.startButton} onPress={handleStartPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={handleStartPress}
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+              activeOpacity={0.8}
+            >
               <Text style={styles.startButtonText}>Mulai</Text>
             </TouchableOpacity>
           </Animated.View>
