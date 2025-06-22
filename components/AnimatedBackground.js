@@ -13,10 +13,11 @@ const AnimatedCloud = ({ image, duration, startOffset, top, size }) => {
     // Fungsi animasi yang akan berulang
     const startAnimation = () => {
       // Atur ulang posisi ke nilai awal
-      position.setValue(startOffset); 
+      position.setValue(0); 
+      // Animasikan dari 0 ke 1
       Animated.timing(position, {
-        toValue: 1, // Animasikan dari nilai awal ke 1
-        duration: duration * (1 - startOffset), // Sesuaikan durasi berdasarkan posisi awal
+        toValue: 1,
+        duration: duration,
         easing: Easing.linear,
         useNativeDriver: true,
       }).start(({ finished }) => {
@@ -26,8 +27,12 @@ const AnimatedCloud = ({ image, duration, startOffset, top, size }) => {
         }
       });
     };
+    // Tunda sedikit animasi awal berdasarkan startOffset agar tidak muncul bersamaan
+    const initialDelay = duration * startOffset;
+    const timer = setTimeout(startAnimation, initialDelay);
 
-    startAnimation();
+    return () => clearTimeout(timer); // Cleanup timer
+
   }, [duration, startOffset]);
 
   const translateX = position.interpolate({
@@ -53,27 +58,40 @@ const AnimatedCloud = ({ image, duration, startOffset, top, size }) => {
 
 const AnimatedBackground = ({ children, source }) => {
   return (
-    // Gunakan 'source' yang dikirimkan melalui props
     <ImageBackground
       source={source}
       style={styles.background}
-      resizeMode="cover" // <-- PENTING: Gunakan 'cover' agar memenuhi layar
+      resizeMode="cover"
     >
-      {/* Awan-awan akan ditampilkan di atas gambar latar belakang ini */}
+      {/* --- UKURAN DAN JUMLAH AWAN DIPERBARUI DI SINI --- */}
+
+      {/* Awan 1 (Besar, di depan, lebih cepat) */}
       <AnimatedCloud 
         image={require('../assets/images/animations/cloud1.png')} 
-        duration={40000}
-        startOffset={0}
-        top={50} // Naikkan posisi awan sedikit
-        size={150} 
+        duration={35000} // Durasi 35 detik
+        startOffset={0}   // Mulai dari awal
+        top={60}
+        size={220}        // Ukuran diperbesar
       />
+
+      {/* Awan 2 (Sedang, di tengah, paling lambat) */}
       <AnimatedCloud 
         image={require('../assets/images/animations/cloud2.png')} 
-        duration={60000}
-        startOffset={0.5}
-        top={90} // Naikkan posisi awan sedikit
-        size={120} 
+        duration={70000} // Durasi 70 detik (sangat lambat)
+        startOffset={0.6} // Mulai agak jauh di depan
+        top={120}
+        size={180}        // Ukuran diperbesar
       />
+      
+      {/* Awan 3 (Kecil, di belakang, kecepatan sedang) - ASET BARU */}
+      <AnimatedCloud 
+        image={require('../assets/images/animations/cloud3.png')} 
+        duration={50000} // Durasi 50 detik
+        startOffset={0.3} // Mulai sedikit di depan
+        top={40}
+        size={160}        // Ukuran diperbesar
+      />
+
       {children}
     </ImageBackground>
   );
@@ -88,7 +106,7 @@ const styles = StyleSheet.create({
   cloud: {
     position: 'absolute',
     resizeMode: 'contain',
-    opacity: 0.8,
+    opacity: 0.9, // Sedikit lebih jelas
   },
 });
 
