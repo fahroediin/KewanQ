@@ -1,25 +1,45 @@
-// File: screens/ModeSelectionScreen.js
-
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Image, TouchableOpacity, Animated, ImageBackground, StatusBar } from 'react-native';
 import { playClickSound } from '../utils/audioHelper';
 
-
 const ModeSelectionScreen = ({ navigation }) => {
-  // Animasi untuk setiap tombol
   const scaleBelajar = useRef(new Animated.Value(1)).current;
   const scaleKuis = useRef(new Animated.Value(1)).current;
 
-  // Fungsi wrapper untuk menangani klik
+  // Nilai animasi opacity untuk berkedip
+  const opacityBelajar = useRef(new Animated.Value(1)).current;
+  const opacityKuis = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Fungsi berkedip setiap 3 detik
+    const startBlinking = (opacityRef) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(opacityRef, {
+            toValue: 0.3,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityRef, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.delay(2000), // Tunggu 2 detik sebelum berkedip lagi
+        ])
+      ).start();
+    };
+
+    startBlinking(opacityBelajar);
+    startBlinking(opacityKuis);
+  }, []);
+
   const handlePress = (scaleAnim, action) => {
     playClickSound();
-    
-    // Animasi tekan
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
     ]).start(() => {
-      // Jalankan aksi setelah animasi selesai
       action();
     });
   };
@@ -37,8 +57,13 @@ const ModeSelectionScreen = ({ navigation }) => {
       <Image source={require('../assets/images/kewanq-logo.png')} style={styles.logo} />
 
       <View style={styles.container}>
-        {/* Tombol BELAJAR dengan posisi absolut */}
-        <Animated.View style={[styles.buttonWrapper, styles.belajarWrapper, { transform: [{ scale: scaleBelajar }] }]}>
+        <Animated.View
+          style={[
+            styles.buttonWrapper,
+            styles.belajarWrapper,
+            { transform: [{ scale: scaleBelajar }], opacity: opacityBelajar }
+          ]}
+        >
           <TouchableOpacity
             onPress={() => handlePress(scaleBelajar, actionBelajar)}
             style={[styles.button, styles.belajarButton]}
@@ -47,9 +72,14 @@ const ModeSelectionScreen = ({ navigation }) => {
             <Image source={require('../assets/images/buttons/button-belajar.png')} style={styles.buttonText} />
           </TouchableOpacity>
         </Animated.View>
-        
-        {/* Tombol KUIS dengan posisi absolut */}
-        <Animated.View style={[styles.buttonWrapper, styles.kuisWrapper, { transform: [{ scale: scaleKuis }] }]}>
+
+        <Animated.View
+          style={[
+            styles.buttonWrapper,
+            styles.kuisWrapper,
+            { transform: [{ scale: scaleKuis }], opacity: opacityKuis }
+          ]}
+        >
           <TouchableOpacity
             onPress={() => handlePress(scaleKuis, actionKuis)}
             style={[styles.button, styles.kuisButton]}
@@ -70,7 +100,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-    logo: {
+  logo: {
     position: 'absolute',
     top: 50,
     right: 20,
@@ -80,17 +110,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   buttonWrapper: {
-    // Semua wrapper tombol sekarang absolut
     position: 'absolute',
-    width: '100%', // Ambil lebar penuh untuk mempermudah pemusatan
-    alignItems: 'center', // Pusatkan tombol di dalam wrapper
+    width: '100%',
+    alignItems: 'center',
   },
   belajarWrapper: {
-    // Atur posisi dari atas
-    top: '35%', 
+    top: '35%',
   },
   kuisWrapper: {
-    // Atur posisi dari atas, lebih rendah dari tombol belajar
     top: '52%',
   },
   button: {
