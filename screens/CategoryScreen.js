@@ -1,6 +1,6 @@
 // File: screens/CategoryScreen.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomButton from '../components/CustomButton';
@@ -12,24 +12,32 @@ import LoadingAnimation from '../components/LoadingAnimation';
 
 const CategoryScreen = ({ navigation }) => {
   const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true); // Untuk loading awal
-  const [isProcessing, setIsProcessing] = useState(false); // Menggantikan isNavigating dan playingSoundId
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState(null);
+  
+  // Gunakan useRef untuk menyimpan referensi ke suara intro
+  const introSoundRef = useRef(null);
 
   const { resetLearningState, loadCategory } = useGameStore.getState();
 
   // useEffect untuk suara intro kategori
   useEffect(() => {
-    let soundObject = null;
     const playIntroSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(require('../assets/audio/categories/pilih-jenis-hewan.mp3'));
-        soundObject = sound;
-        await soundObject.playAsync();
+        introSoundRef.current = sound; // Simpan objek suara ke ref
+        await sound.playAsync();
       } catch (error) { console.error("Gagal memutar suara intro kategori:", error); }
     };
     playIntroSound();
-    return () => { if (soundObject) soundObject.unloadAsync(); };
+    
+    // Fungsi cleanup
+    return () => { 
+      if (introSoundRef.current) {
+        introSoundRef.current.unloadAsync();
+      }
+    };
   }, []);
 
   // useEffect untuk memuat data kategori
@@ -53,16 +61,23 @@ const CategoryScreen = ({ navigation }) => {
     return unsubscribe;
   }, [navigation]);
 
-  // Fungsi yang didesain ulang untuk alur berurutan
+  // Fungsi yang didesain ulang untuk alur berurutan yang lebih halus
   const handleCategoryPress = async (item) => {
     if (isProcessing) return;
+    
+    // 1. Hentikan suara intro jika sedang berjalan
+    if (introSoundRef.current) {
+      await introSoundRef.current.stopAsync();
+      await introSoundRef.current.unloadAsync();
+      introSoundRef.current = null; // Hapus referensi
+    }
 
-    // 1. Reset state game dan tandai sedang proses
+    // 2. Reset state dan nonaktifkan tombol
     resetLearningState();
     setIsProcessing(true);
-    setSelectedIcon(item.icon_name); // Simpan ikon untuk loading nanti
+    setSelectedIcon(item.icon_name);
 
-    // --- TAHAP 1: Putar Suara Dulu ---
+    // --- TAHAP 1: Putar Suara Kategori dan Tunggu ---
     const soundMap = {
       'serangga.mp3': require('../assets/audio/categories/serangga.mp3'),
       'mamalia.mp3': require('../assets/audio/categories/mamalia.mp3'),
@@ -77,39 +92,37 @@ const CategoryScreen = ({ navigation }) => {
           sound.setOnPlaybackStatusUpdate(status => {
             if (status.didJustFinish) {
               sound.unloadAsync();
-              resolve(); // Selesaikan promise saat suara selesai
+              resolve();
             }
           });
-        } catch (e) { resolve(); } // Jika error, langsung lanjut
+        } catch (e) { resolve(); }
       } else {
-        resolve(); // Jika tidak ada suara, langsung lanjut
+        resolve();
       }
     });
 
-    await playSoundAndWait; // Tunggu sampai suara selesai
-
-    // --- TAHAP 2: Pre-fetch Data (setelah suara selesai) ---
-    // Animasi loading akan otomatis muncul karena isProcessing sudah true
+    await playSoundAndWait;
+    // --- TAHAP 2: Pre-fetch Data (Animasi Loading akan muncul sekarang) ---
     try {
-        console.log(`Pre-fetching data untuk kategori ID: ${item.id}`);
         const animalsJson = await AsyncStorage.getItem('animals');
         const allAnimals = animalsJson ? JSON.parse(animalsJson) : [];
         const filteredAnimals = allAnimals.filter(animal => animal.category_id === item.id);
         loadCategory(filteredAnimals);
-        console.log(`Pre-fetching selesai. Ditemukan ${filteredAnimals.length} hewan.`);
     } catch (e) {
-        console.error("Gagal pre-fetch data:", e);
         loadCategory([]);
     }
 
     // --- TAHAP 3: Navigasi ---
-    // Beri jeda singkat agar loading terasa lebih natural
-    setTimeout(() => {
-      navigation.navigate('Learning', { categoryId: item.id });
-    }, 300); // Jeda 0.3 detik
+    navigation.navigate('Learning', { categoryId: item.id });
   };
 
-  const handleGoBack = () => {
+  const handleGoBack = async () => {
+    // Hentikan juga suara intro saat menekan tombol kembali
+    if (introSoundRef.current) {
+        await introSoundRef.current.stopAsync();
+        await introSoundRef.current.unloadAsync();
+        introSoundRef.current = null;
+    }
     playClickSound();
     navigation.goBack();
   };

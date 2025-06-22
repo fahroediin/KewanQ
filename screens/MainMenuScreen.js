@@ -8,41 +8,75 @@ import AnimatedBackground from '../components/AnimatedBackground';
 import { playClickSound } from '../utils/audioHelper';
 
 const MainMenuScreen = ({ navigation }) => {
-  const [sound, setSound] = useState();
+  const [welcomeSound, setWelcomeSound] = useState();
   const playBackgroundMusic = useGameStore(state => state.playBackgroundMusic);
   
   const scaleValue = useRef(new Animated.Value(1)).current;
 
+  // --- useEffect YANG DIPERBARUI UNTUK ALUR AUDIO BERURUTAN ---
   useEffect(() => {
     let isMounted = true;
-    async function playWelcomeSound() {
-      if (Platform.OS === 'web') return;
+
+    async function setupSounds() {
+      // Hanya jalankan di mobile
+      if (Platform.OS === 'web') {
+        // Di web, musik akan diputar saat tombol ditekan
+        return;
+      }
+      
       try {
-        const { sound: welcomeSound } = await Audio.Sound.createAsync(require('../assets/audio/selamat-datang.mp3'));
+        console.log("Memuat Suara Selamat Datang...");
+        const { sound } = await Audio.Sound.createAsync(
+           require('../assets/audio/selamat-datang.mp3')
+        );
+
         if (isMounted) {
-          setSound(welcomeSound);
-          await welcomeSound.playAsync();
+          setWelcomeSound(sound);
+          
+          // Tambahkan listener untuk mendeteksi kapan suara selesai
+          sound.setOnPlaybackStatusUpdate(status => {
+            if (status.didJustFinish) {
+              console.log("Suara Selamat Datang Selesai. Memutar Musik Latar...");
+              // Setelah selesai, putar musik latar
+              playBackgroundMusic();
+              // Hapus listener agar tidak berjalan lagi
+              sound.setOnPlaybackStatusUpdate(null);
+            }
+          });
+
+          await sound.playAsync();
+          console.log("Suara Selamat Datang Diputar.");
         }
-      } catch (error) { console.error("Gagal memutar suara selamat datang:", error); }
+      } catch (error) { 
+        console.error("Gagal memutar suara selamat datang, mencoba putar musik latar langsung.", error);
+        playBackgroundMusic(); // Fallback: jika suara selamat datang gagal, langsung putar musik
+      }
     }
-    playWelcomeSound();
+    
+    setupSounds();
+    
+    // Fungsi cleanup
     return () => {
       isMounted = false;
-      if (sound) sound.unloadAsync();
+      if (welcomeSound) {
+        console.log("Unloading Suara Selamat Datang.");
+        welcomeSound.unloadAsync();
+      }
     };
-  }, []);
+  }, []); // Array dependency kosong memastikan ini hanya berjalan sekali
 
+  // Fungsi yang dipanggil saat tombol "Mulai" ditekan
   const handleStartPress = async () => {
-    if (sound) {
-      await sound.stopAsync();
-      await sound.unloadAsync();
+    // Hentikan suara selamat datang jika masih berjalan
+    if (welcomeSound) {
+      await welcomeSound.stopAsync();
+      await welcomeSound.unloadAsync();
     }
-    playClickSound();
-    playBackgroundMusic();
     
-    // --- PERUBAHAN UTAMA DI SINI ---
-    // Ganti 'navigate' dengan 'replace'
-    navigation.replace('ModeSelection'); 
+    playClickSound();
+    playBackgroundMusic(); // Pastikan musik tetap diputar jika pengguna menekan tombol sebelum suara selamat datang selesai
+    
+    navigation.replace('ModeSelection');
   };
   
   const onPressIn = () => Animated.spring(scaleValue, { toValue: 0.95, useNativeDriver: true }).start();
@@ -66,6 +100,7 @@ const MainMenuScreen = ({ navigation }) => {
   );
 };
 
+// Stylesheet (tidak ada perubahan)
 const styles = StyleSheet.create({
   stage: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   tanahLayer: { position: 'absolute', bottom: 0, width: '100%', height: '60%', resizeMode: 'cover' },

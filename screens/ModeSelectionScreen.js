@@ -1,44 +1,121 @@
 // File: screens/ModeSelectionScreen.js
 
-import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
-import AnimatedBackground from '../components/AnimatedBackground';
-import CustomButton from '../components/CustomButton';
+import React, { useRef } from 'react';
+import { View, StyleSheet, Image, TouchableOpacity, Animated, ImageBackground, StatusBar } from 'react-native';
 import { playClickSound } from '../utils/audioHelper';
 
 const ModeSelectionScreen = ({ navigation }) => {
-  const handleModePress = (action) => {
+  // Animasi untuk setiap tombol
+  const scaleBelajar = useRef(new Animated.Value(1)).current;
+  const scaleKuis = useRef(new Animated.Value(1)).current;
+
+  // Fungsi wrapper untuk menangani klik
+  const handlePress = (scaleAnim, action) => {
     playClickSound();
-    action();
+    
+    // Animasi tekan
+    Animated.sequence([
+      Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start(() => {
+      // Jalankan aksi setelah animasi selesai
+      action();
+    });
   };
 
-  const modes = [
-    { id: 1, name: 'Belajar', icon_name: 'school', action: () => navigation.navigate('Category') },
-    { id: 2, name: 'Kuis', icon_name: 'gamepad-variant', action: () => alert('Fitur Kuis Segera Hadir!') },
-  ];
+  const actionBelajar = () => navigation.navigate('Category');
+  const actionKuis = () => alert('Fitur Kuis Segera Hadir!');
 
   return (
-    <AnimatedBackground>
-      <View style={styles.container}>
-        {/* Tombol Back sudah dihapus */}
-        
-        <Image source={require('../assets/images/kewanq-logo.png')} style={styles.logo} />
+    <ImageBackground
+      source={require('../assets/images/backgrounds/mode-selection-bg.png')}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <StatusBar barStyle="dark-content" />
+      <Image source={require('../assets/images/kewanq-logo.png')} style={styles.logo} />
 
-        <View style={styles.buttonContainer}>
-          {modes.map((mode) => (
-            <CustomButton key={mode.id} title={mode.name} iconName={mode.icon_name} onPress={() => handleModePress(mode.action)} />
-          ))}
-        </View>
+      <View style={styles.container}>
+        {/* Tombol BELAJAR dengan posisi absolut */}
+        <Animated.View style={[styles.buttonWrapper, styles.belajarWrapper, { transform: [{ scale: scaleBelajar }] }]}>
+          <TouchableOpacity
+            onPress={() => handlePress(scaleBelajar, actionBelajar)}
+            style={[styles.button, styles.belajarButton]}
+            activeOpacity={1}
+          >
+            <Image source={require('../assets/images/text/text-belajar.png')} style={styles.buttonText} />
+          </TouchableOpacity>
+        </Animated.View>
+        
+        {/* Tombol KUIS dengan posisi absolut */}
+        <Animated.View style={[styles.buttonWrapper, styles.kuisWrapper, { transform: [{ scale: scaleKuis }] }]}>
+          <TouchableOpacity
+            onPress={() => handlePress(scaleKuis, actionKuis)}
+            style={[styles.button, styles.kuisButton]}
+            activeOpacity={1}
+          >
+            <Image source={require('../assets/images/text/text-kuis.png')} style={styles.buttonText} />
+          </TouchableOpacity>
+        </Animated.View>
       </View>
-    </AnimatedBackground>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // Style untuk backButton dan backIcon sudah dihapus
-  logo: { position: 'absolute', top: 50, right: 20, width: 120, height: 40, resizeMode: 'contain' },
-  buttonContainer: { width: '100%', alignItems: 'center', marginTop: 80 },
+  background: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
+    logo: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 120,
+    height: 40,
+    resizeMode: 'contain',
+    zIndex: 10,
+  },
+  buttonWrapper: {
+    // Semua wrapper tombol sekarang absolut
+    position: 'absolute',
+    width: '100%', // Ambil lebar penuh untuk mempermudah pemusatan
+    alignItems: 'center', // Pusatkan tombol di dalam wrapper
+  },
+  belajarWrapper: {
+    // Atur posisi dari atas
+    top: '39%', 
+  },
+  kuisWrapper: {
+    // Atur posisi dari atas, lebih rendah dari tombol belajar
+    top: '54%',
+  },
+  button: {
+    width: 300,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ rotate: '-7deg' }],
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  belajarButton: {
+    backgroundColor: '#9CCC65',
+  },
+  kuisButton: {
+    backgroundColor: '#d5840c',
+  },
+  buttonText: {
+    width: '70%',
+    height: '70%',
+    resizeMode: 'contain',
+  },
 });
 
 export default ModeSelectionScreen;
